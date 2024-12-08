@@ -22,6 +22,9 @@ Partial Class Form1
     'Não o modifique usando o editor de códigos.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
+        Dim ChartArea1 As System.Windows.Forms.DataVisualization.Charting.ChartArea = New System.Windows.Forms.DataVisualization.Charting.ChartArea()
+        Dim Legend1 As System.Windows.Forms.DataVisualization.Charting.Legend = New System.Windows.Forms.DataVisualization.Charting.Legend()
+        Dim Series1 As System.Windows.Forms.DataVisualization.Charting.Series = New System.Windows.Forms.DataVisualization.Charting.Series()
         Me.txtIP = New System.Windows.Forms.TextBox()
         Me.Label1 = New System.Windows.Forms.Label()
         Me.Label2 = New System.Windows.Forms.Label()
@@ -31,9 +34,10 @@ Partial Class Form1
         Me.txtTime = New System.Windows.Forms.TextBox()
         Me.btnStart = New System.Windows.Forms.Button()
         Me.btnStop = New System.Windows.Forms.Button()
-        Me.txtOutput = New System.Windows.Forms.RichTextBox()
         Me.chkClient = New System.Windows.Forms.CheckBox()
         Me.chkServer = New System.Windows.Forms.CheckBox()
+        Me.chartSpeeds = New System.Windows.Forms.DataVisualization.Charting.Chart()
+        CType(Me.chartSpeeds, System.ComponentModel.ISupportInitialize).BeginInit()
         Me.SuspendLayout()
         '
         'txtIP
@@ -118,15 +122,6 @@ Partial Class Form1
         Me.btnStop.Text = "Parar Teste"
         Me.btnStop.UseVisualStyleBackColor = True
         '
-        'txtOutput
-        '
-        Me.txtOutput.Location = New System.Drawing.Point(277, 9)
-        Me.txtOutput.Name = "txtOutput"
-        Me.txtOutput.ReadOnly = True
-        Me.txtOutput.Size = New System.Drawing.Size(511, 429)
-        Me.txtOutput.TabIndex = 9
-        Me.txtOutput.Text = ""
-        '
         'chkClient
         '
         Me.chkClient.AutoSize = True
@@ -149,14 +144,31 @@ Partial Class Form1
         Me.chkServer.Text = "Servidor"
         Me.chkServer.UseVisualStyleBackColor = True
         '
+        'chartSpeeds
+        '
+        ChartArea1.Name = "ChartArea1"
+        Me.chartSpeeds.ChartAreas.Add(ChartArea1)
+        Legend1.Name = "Legend1"
+        Me.chartSpeeds.Legends.Add(Legend1)
+        Me.chartSpeeds.Location = New System.Drawing.Point(277, 80)
+        Me.chartSpeeds.Name = "chartSpeeds"
+        Series1.ChartArea = "ChartArea1"
+        Series1.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line
+        Series1.Legend = "Legend1"
+        Series1.Name = "Velocidade"
+        Me.chartSpeeds.Series.Add(Series1)
+        Me.chartSpeeds.Size = New System.Drawing.Size(693, 300)
+        Me.chartSpeeds.TabIndex = 12
+        Me.chartSpeeds.Text = "Chart1"
+        '
         'Form1
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
-        Me.ClientSize = New System.Drawing.Size(800, 450)
+        Me.ClientSize = New System.Drawing.Size(982, 450)
+        Me.Controls.Add(Me.chartSpeeds)
         Me.Controls.Add(Me.chkServer)
         Me.Controls.Add(Me.chkClient)
-        Me.Controls.Add(Me.txtOutput)
         Me.Controls.Add(Me.btnStop)
         Me.Controls.Add(Me.btnStart)
         Me.Controls.Add(Me.txtTime)
@@ -169,6 +181,7 @@ Partial Class Form1
         Me.MaximizeBox = False
         Me.Name = "Form1"
         Me.Text = "iPerf GUI - Inatel"
+        CType(Me.chartSpeeds, System.ComponentModel.ISupportInitialize).EndInit()
         Me.ResumeLayout(False)
         Me.PerformLayout()
 
@@ -183,7 +196,7 @@ Partial Class Form1
     Friend WithEvents txtTime As TextBox
     Friend WithEvents btnStart As Button
     Friend WithEvents btnStop As Button
-    Friend WithEvents txtOutput As RichTextBox
     Friend WithEvents chkClient As CheckBox
     Friend WithEvents chkServer As CheckBox
+    Friend WithEvents chartSpeeds As DataVisualization.Charting.Chart
 End Class
