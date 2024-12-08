@@ -3,8 +3,8 @@ Imports System.IO
 Imports System.Windows.Forms.DataVisualization.Charting
 
 Public Class Form1
-    Private iperfProcesses As New List(Of Process)() ' Lista de processos do iPerf
-    Private timeIndex As Integer = 0 ' Começa o tempo em 0
+    Private iperfProcess As Process
+    Private timeIndex As Integer = 0 ' Tempo começa em 0
 
     ' Botão "Iniciar"
     Private Sub btnStart_Click(sender As Object, e As EventArgs) Handles btnStart.Click
@@ -14,20 +14,18 @@ Public Class Form1
             Return
         End If
 
-        ' Limpar processos anteriores
-        StopAllProcesses()
+        ' Finalizar o processo anterior se ainda estiver ativo
+        StopProcess()
 
         ' Configurar argumentos do iPerf
         Dim arguments As String
-        Dim numConnections As Integer = CInt(nudConnections.Value) ' Quantidade de conexões simultâneas
-
         If chkServer.Checked Then
             arguments = "-s"
         Else
             Dim ip As String = txtIP.Text
             Dim port As String = txtPort.Text
             Dim time As String = txtTime.Text
-            arguments = $"-c {ip} -p {port} -t {time} -P {numConnections}" ' Adicionar número de conexões com -P
+            arguments = $"-c {ip} -p {port} -t {time}" ' Uma única conexão
         End If
 
         ' Caminho para o iPerf
@@ -40,23 +38,9 @@ Public Class Form1
         ' Mostrar mensagem informando que o teste foi iniciado
         MessageBox.Show("Teste iniciado. Por favor, aguarde a conclusão.", "Teste Iniciado", MessageBoxButtons.OK, MessageBoxIcon.Information)
 
-        ' Configurar e iniciar os processos do iPerf
+        ' Configurar e iniciar o processo do iPerf
         Try
-            ' Limpar o gráfico
-            chartSpeeds.Series.Clear()
-            timeIndex = 0 ' Reiniciar o contador de tempo
-
-            ' Criar séries no gráfico para cada conexão
-            For i As Integer = 1 To numConnections
-                Dim series As New Series($"Conexão {i}")
-                series.ChartType = SeriesChartType.Line
-                series.BorderWidth = 2
-                series.Color = Color.FromArgb(100 + (i * 20), 50 + (i * 10), 200 - (i * 15)) ' Cores distintas
-                chartSpeeds.Series.Add(series)
-            Next
-
-            ' Iniciar o processo do iPerf
-            Dim iperfProcess As New Process()
+            iperfProcess = New Process()
             iperfProcess.StartInfo.FileName = iperfPath
             iperfProcess.StartInfo.Arguments = arguments
             iperfProcess.StartInfo.RedirectStandardOutput = True
@@ -65,13 +49,22 @@ Public Class Form1
 
             ' Capturar saída do processo
             AddHandler iperfProcess.OutputDataReceived, AddressOf OnOutputDataReceived
-            AddHandler iperfProcess.Exited, AddressOf OnProcessExited ' Manipular conclusão do processo
+            AddHandler iperfProcess.Exited, AddressOf OnProcessExited
+
+            ' Limpar o gráfico
+            chartSpeeds.Series.Clear()
+            timeIndex = 0 ' Reiniciar o contador de tempo
+
+            ' Criar série no gráfico
+            Dim series As New Series("Velocidade")
+            series.ChartType = SeriesChartType.Line
+            series.BorderWidth = 2
+            series.Color = Color.Blue
+            chartSpeeds.Series.Add(series)
 
             iperfProcess.EnableRaisingEvents = True
             iperfProcess.Start()
             iperfProcess.BeginOutputReadLine()
-
-            iperfProcesses.Add(iperfProcess) ' Adicionar à lista de processos
         Catch ex As Exception
             MessageBox.Show($"Erro ao iniciar o iPerf: {ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
@@ -79,17 +72,15 @@ Public Class Form1
 
     ' Botão "Parar"
     Private Sub btnStop_Click(sender As Object, e As EventArgs) Handles btnStop.Click
-        StopAllProcesses()
+        StopProcess()
     End Sub
 
-    ' Parar todos os processos do iPerf
-    Private Sub StopAllProcesses()
-        For Each proc As Process In iperfProcesses
-            If proc IsNot Nothing AndAlso Not proc.HasExited Then
-                proc.Kill()
-            End If
-        Next
-        iperfProcesses.Clear()
+    ' Parar o processo do iPerf
+    Private Sub StopProcess()
+        If iperfProcess IsNot Nothing AndAlso Not iperfProcess.HasExited Then
+            iperfProcess.Kill()
+        End If
+        iperfProcess = Nothing
     End Sub
 
     ' Capturar saída do iPerf
@@ -98,20 +89,12 @@ Public Class Form1
             ' Processar a saída do iPerf para extrair as velocidades
             Dim line As String = e.Data
             If line.Contains("bits/sec") Then
-                ' Extração da velocidade e índice da conexão
                 Dim speedMbps As Double = ExtractSpeed(line)
-                Dim connectionIndex As Integer = ExtractConnectionIndex(line)
 
                 ' Atualizar o gráfico no thread principal
                 Me.Invoke(Sub()
-                              If connectionIndex > 0 AndAlso connectionIndex <= chartSpeeds.Series.Count Then
-                                  chartSpeeds.Series($"Conexão {connectionIndex}").Points.AddXY(timeIndex, speedMbps)
-                              End If
-
-                              ' Incrementar tempo apenas uma vez por rodada
-                              If connectionIndex = 1 Then
-                                  timeIndex += 1
-                              End If
+                              chartSpeeds.Series("Velocidade").Points.AddXY(timeIndex, speedMbps)
+                              timeIndex += 1
                           End Sub)
             End If
         End If
@@ -148,23 +131,7 @@ Public Class Form1
                 End If
             Next
         Catch ex As Exception
-            ' Retorna 0 em caso de erro
-        End Try
-        Return 0
-    End Function
-
-    ' Função para extrair o índice da conexão
-    Private Function ExtractConnectionIndex(line As String) As Integer
-        ' Exemplo: "[ ID] Intervalo Transferência"
-        Try
-            Dim parts As String() = line.Split(" "c)
-            For i As Integer = 0 To parts.Length - 1
-                If parts(i).StartsWith("[") AndAlso parts(i).EndsWith("]") Then
-                    Return Convert.ToInt32(parts(i).Trim("["c, "]"c))
-                End If
-            Next
-        Catch ex As Exception
-            ' Retorna 0 em caso de erro
+            Debug.WriteLine($"Erro ao processar linha: {line}, Erro: {ex.Message}")
         End Try
         Return 0
     End Function
@@ -177,7 +144,7 @@ Public Class Form1
             .ChartAreas.Clear()
 
             ' Configurar área do gráfico
-            Dim chartArea As New ChartArea()
+            Dim chartArea As New ChartArea("MainArea")
             chartArea.AxisX.Title = "Tempo (s)" ' Eixo X: segundos
             chartArea.AxisX.TitleFont = New Font("Arial", 10, FontStyle.Bold)
             chartArea.AxisX.Interval = 1 ' Intervalo de 1 segundo no eixo X
